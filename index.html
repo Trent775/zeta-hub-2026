@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZETA HUB | Проект «День монтажника» 20.05.2026</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        /* ═══════════ БАЗОВЫЕ СТИЛИ (ОБЩИЕ) ═══════════ */
+        :root {
+            --bg: #f2f3f5; --card: #ffffff; --text: #1a1a1a; --text-secondary: #666;
+            --border: #e0e0e0; --accent: #0066cc; --danger: #cc0000; --warning: #e68a00;
+            --success: #008000; --tag-blue: #e3f2fd; --tag-green: #e8f5e9;
+            --tag-red: #ffebee; --tag-yellow: #fff8e1; --tag-purple: #f3e5f5;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08); --radius: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+
+        /* ═══════════ ГЛОБАЛЬНАЯ НАВИГАЦИЯ ═══════════ */
+        .global-nav { background: #000; color: #fff; padding: 10px 24px; display: flex; gap: 15px; align-items: center; position: sticky; top: 0; z-index: 9999; }
+        .global-nav span { font-weight: bold; margin-right: 20px; color: #aaa; letter-spacing: 1px;}
+        .g-btn { background: #333; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+        .g-btn:hover { background: #555; }
+        .g-btn.active { background: var(--accent); }
+        .cloud-status { margin-left: auto; font-size: 0.75rem; color: #4caf50; display: flex; align-items: center; gap: 6px; font-family: monospace;}
+        .cloud-status.offline { color: #f44336; }
+        .cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; animation: pulse 2s infinite; }
+        .offline .cloud-dot { background: #f44336; animation: none; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .app-module { display: none; }
+        .app-module.active { display: block; }
+
+        /* ═══════════ СТИЛИ ИНТЕРФЕЙСОВ ═══════════ */
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 18px 24px; position: sticky; top: 45px; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.3px; }
+        .header .subtitle { font-size: 0.78rem; opacity: 0.75; margin-top: 2px; }
+        .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+        .stat { background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border-radius: 6px; padding: 7px 12px; font-size: 0.78rem; cursor: pointer; transition: background 0.15s; }
+        .stat:hover { background: rgba(255,255,255,0.2); }
+        .stat .val { font-weight: 700; font-size: 1.1rem; }
+        .stat .lbl { opacity: 0.7; font-size: 0.68rem; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 145px; z-index: 99; }
+        .toolbar select, .toolbar input { padding: 6px 10px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 0.83rem; background: #fff; min-width: 150px; font-family: inherit; }
+        .toolbar select:focus, .toolbar input:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 6px 14px; border-radius: 6px; font-size: 0.83rem; cursor: pointer; border: none; font-weight: 500; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+        .btn-outline { background: #fff; border: 1px solid #d0d0d0; }
+        .btn-outline:hover { background: #f6f6f6; }
+        .btn.active { background: #e3f2fd; border-color: var(--accent); color: var(--accent); }
+        .toolbar .spacer { flex: 1; }
+        .content { padding: 14px 24px 40px; }
+
+        /* Таблицы */
+        .table-wrapper, .cp-table, .esc-table { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.81rem; min-width: 1150px; }
+        .esc-table table { min-width: 800px; }
+        thead { background: #fafafa; }
+        th { padding: 9px 10px; text-align: left; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); border-bottom: 2px solid #e0e0e0; white-space: nowrap; cursor: pointer; user-select: none; }
+        th:hover { color: var(--accent); }
+        td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        tr:hover td { background: #fafcff; }
+        tr.row-danger td, tr.esc-danger td { background: #fff5f5; }
+        tr.row-warning td, tr.esc-active td { background: #fffdf5; }
+        tr.row-done td { background: #f6fdf6; color: #888; }
+        tr.row-done td.task-name { text-decoration: line-through; }
+
+        /* Теги и Чекбоксы */
+        .tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
+        .tag-blue { background: var(--tag-blue); color: #0d47a1; }
+        .tag-green { background: var(--tag-green); color: #1b5e20; }
+        .tag-red { background: var(--tag-red); color: #b71c1c; }
+        .tag-yellow { background: var(--tag-yellow); color: #e65100; }
+        .tag-purple { background: var(--tag-purple); color: #6a1b9a; }
+        .done-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--success); }
+
+        /* Календарь и Карточки */
+        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+        .cal-day { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .cal-day-header { padding: 7px 10px; font-weight: 600; font-size: 0.78rem; border-bottom: 1px solid #f0f0f0; }
+        .cal-day-header.weekend { background: #fafafa; color: #999; }
+        .cal-day-header.today { background: #e3f2fd; color: var(--accent); }
+        .cal-day-header.overdue { background: #ffebee; color: var(--danger); }
+        .cal-item { padding: 5px 9px; font-size: 0.7rem; border-bottom: 1px solid #f9f9f9; cursor: pointer; }
+        .cal-item:hover { background: #fafcff; }
+        .cal-item.done { text-decoration: line-through; opacity: 0.5; }
+        .cal-item .cal-who { font-weight: 600; font-size: 0.68rem; color: var(--accent); }
+        .cal-empty { padding: 18px; text-align: center; color: #ccc; font-size: 0.78rem; }
+        
+        .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; border-left: 4px solid var(--accent); }
+        .card.danger { border-left-color: var(--danger); }
+        .card.warning { border-left-color: var(--warning); }
+        .card.success { border-left-color: var(--success); }
+        .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px; }
+        .card-date { font-weight: 700; font-size: 0.85rem; }
+        .card-weekday { font-size: 0.75rem; color: var(--text-secondary); }
+        .card-days { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+        .card-days.urgent { background: #ffebee; color: var(--danger); }
+        .card-days.soon { background: #fff8e1; color: var(--warning); }
+        .card-days.normal { background: #e8f5e9; color: var(--success); }
+        .card-days.past { background: #ffcdd2; color: #b71c1c; }
+        .card-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+        .card-desc { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .card-participants { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+        /* Чек-лист РП */
+        .checklist-section { margin-bottom: 14px; }
+        .checklist-section h3 { font-size: 0.85rem; font-weight: 700; padding: 6px 10px; background: #fafafa; border-radius: 4px; margin-bottom: 6px; }
+        .checklist-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #f5f5f5; font-size: 0.8rem; }
+        .checklist-item input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--success); flex-shrink: 0; }
+        .checklist-item.done { opacity: 0.5; }
+        .checklist-item.done label { text-decoration: line-through; }
+        .checklist-item label { cursor: pointer; flex: 1; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="global-nav">
+    <span>ZETA HUB</span>
+    <button class="g-btn active" onclick="switchApp('matrixApp')">Матрица управления (Команда)</button>
+    <button class="g-btn" onclick="switchApp('consoleApp')">Панель управления (РП)</button>
+    <div class="cloud-status offline" id="cloudStatus">
+        <div class="cloud-dot"></div>
+        <span id="cloudText">Подключение к БД...</span>
+    </div>
+</div>
+
+<div id="matrixApp" class="app-module active">
+    <div class="header">
+        <div class="header-top">
+            <div>
+                <h1>День монтажника — Матрица управления проектом</h1>
+                <div class="subtitle">Завод ЗЭТА × Кабельная арматура | 20 мая 2026 | Заказчик: Райчук Ю.</div>
+            </div>
+        </div>
+        <div class="stats-bar">
+            <div class="stat" onclick="filterByStatus('all')"><div class="val" id="statTotal">53</div><div class="lbl">Всего задач</div></div>
+            <div class="stat" onclick="filterByStatus('urgent')"><div class="val" id="statUrgent">0</div><div class="lbl">Срочно (≤3 дн)</div></div>
+            <div class="stat" onclick="filterByStatus('overdue')"><div class="val" id="statOverdue">0</div><div class="lbl">Просрочено</div></div>
+            <div class="stat" onclick="filterByStatus('today')"><div class="val" id="statToday">0</div><div class="lbl">На сегодня</div></div>
+            <div class="stat" onclick="filterByStatus('done')"><div class="val" id="statDone">0</div><div class="lbl">Выполнено</div></div>
+        </div>
+    </div>
+    <div class="toolbar" id="toolbarMatrix">
+        <select id="filterPerson" onchange="applyFilters()"><option value="all">👤 Все участники</option></select>
+        <select id="filterBlock" onchange="applyFilters()"><option value="all">📁 Все блоки</option></select>
+        <input type="text" id="filterSearch" placeholder="🔍 Поиск..." oninput="applyFilters()">
+        <span class="spacer"></span>
+        <button class="btn btn-outline active" id="btnViewTable" onclick="setMatrixView('table')">📋 Таблица</button>
+        <button class="btn btn-outline" id="btnViewCalendar" onclick="setMatrixView('calendar')">📅 Календарь</button>
+        <button class="btn btn-outline" id="btnViewCP" onclick="setMatrixView('cp')">🎯 Точки контроля</button>
+        <button class="btn btn-outline" onclick="resetFilters()">🔄 Сброс</button>
+    </div>
+    <div class="content">
+        <div id="viewTable"><div class="table-wrapper"><table><thead><tr><th>#</th><th>Задача</th><th>Исполнитель (R)</th><th>Ответств. (A)</th><th>Консультант (C)</th><th>Информируемый (I)</th><th>Дедлайн</th><th>Статус</th><th>✓</th></tr></thead><tbody id="tableBody"></tbody></table></div></div>
+        <div id="viewCalendar" class="hidden"><div class="calendar-grid" id="calendarGrid"></div></div>
+        <div id="viewCP" class="hidden"><div class="cp-table" id="cpTable"></div></div>
+    </div>
+</div>
+
+<div id="consoleApp" class="app-module">
+    <div class="header">
+        <h1>Панель управления РП — Проект «День монтажника»</h1>
+        <div class="subtitle">РП: Голуб В. | Заказчик: Райчук Ю. | Канал: Yougile | Срок: 04.05 – 25.05.2026</div>
+    </div>
+    <div class="toolbar" id="toolbarConsole">
+        <button class="btn btn-outline active" id="btnCal" onclick="setConsoleView('cal')">📅 Календарь управления</button>
+        <button class="btn btn-outline" id="btnSync" onclick="setConsoleView('sync')">🔄 Планерки</button>
+        <button class="btn btn-outline" id="btnEsc" onclick="setConsoleView('esc')">🚨 Точки эскалации</button>
+        <button class="btn btn-outline" id="btnRP" onclick="setConsoleView('rp')">✅ Чек-лист РП</button>
+    </div>
+    <div class="content">
+        <div id="viewCal"><div class="grid" id="calGrid"></div></div>
+        <div id="viewSync" class="hidden"><div class="grid" id="syncGrid"></div></div>
+        <div id="viewEsc" class="hidden"><div class="esc-table" id="escTable"></div></div>
+        <div id="viewRP" class="hidden"><div id="rpChecklist"></div></div>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// 1. ИНИЦИАЛИЗАЦИЯ FIREBASE (Твои ключи + добавленный мной databaseURL)
+// ============================================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyAl4KpPXXHCAwY78NjzjVfQ6PNDs6k8fvc",
+    authDomain: "zeta-montazhnik-2026.firebaseapp.com",
+    // ДОБАВЛЕНО ИНЖЕНЕРОМ ДЛЯ ИСПРАВЛЕНИЯ ОШИБКИ ПОДКЛЮЧЕНИЯ:
+    databaseURL: "https://zeta-montazhnik-2026-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "zeta-montazhnik-2026",
+    storageBucket: "zeta-montazhnik-2026.firebasestorage.app",
+    messagingSenderId: "896467653666",
+    appId: "1:896467653666:web:14e5acaefe90348ce9e67b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+let doneTasksCloud = {};
+let doneRPCloud = {};
+
+// Слушатель базы: Задачи
+database.ref('matrixDone').on('value', (snapshot) => {
+    doneTasksCloud = snapshot.val() || {};
+    document.getElementById('cloudStatus').classList.remove('offline');
+    document.getElementById('cloudText').innerText = "ONLINE DB: Активно";
+    applyFilters();
+});
+
+// Слушатель базы: Чек-лист РП
+database.ref('rpChecklist').on('value', (snapshot) => {
+    doneRPCloud = snapshot.val() || {};
+    if (!document.getElementById('viewRP').classList.contains('hidden')) {
+        renderRP();
+    }
+});
+
+// Отправка в облако
+function toggleTaskCloud(id) {
+    const isDone = !!doneTasksCloud[id];
+    database.ref('matrixDone/' + id).set(isDone ? null : true);
+}
+window._rpToggleCloud = function(key) {
+    const isDone = !!doneRPCloud[key];
+    database.ref('rpChecklist/' + key).set(isDone ? null : true);
+};
+
+// ============================================================================
+// 2. ПОЛНЫЕ МАССИВЫ ДАННЫХ (ВСЕ 53 ЗАДАЧИ, ВЕХИ, ПЛАНЕРКИ И ЭСКАЛАЦИИ)
+// ============================================================================
+const tasks = [
+    {id:"1.1", task:"Поминутный сценарий дня", R:"Голуб В.", A:"Голуб В.", C:"", I:"Все", deadline:"2026-05-12", block:"1. Методика"},
+    {id:"1.2", task:"Маршрут - Сценарий экскурсии", R:"Голуб В.", A:"Голуб В.", C:"Асканаков В., Гостев С.", I:"Першин И., Логинова И.", deadline:"2026-05-13", block:"1. Методика"},
+    {id:"1.3", task:"План практикума (4 станции, задания)", R:"Голуб В.", A:"Голуб В.", C:"Чурсин Ю., Першин И.", I:"Першин И., Логинова И., Асканаков В.", deadline:"2026-05-13", block:"1. Методика"},
+    {id:"1.4", task:"Сбор фич для теории", R:"Голуб В.", A:"Голуб В.", C:"Чурсин Ю.", I:"Першин И., Логинова И., Асканаков В.", deadline:"2026-05-08", block:"1. Методика"},
+    {id:"1.5", task:"Составление программы", R:"Голуб В.", A:"Голуб В.", C:"Чурсин Ю.", I:"Першин И., Логинова И., Асканаков В.", deadline:"2026-05-13", block:"1. Методика"},
+    {id:"1.6", task:"Проведение лекций", R:"Голуб В.", A:"Голуб В.", C:"Чурсин Ю.", I:"Першин И., Логинова И., Асканаков В.", deadline:"2026-05-20", block:"1. Методика"},
+    {id:"2.1", task:"Прямой обзвон клиентов по базе КА", R:"Менеджеры КА", A:"Веприцкий А.", C:"Голуб В. (скрипт)", I:"Голуб В.", deadline:"Ежедневно", block:"2. Набор"},
+    {id:"2.2", task:"Ежедневная сводка", R:"Веприцкий А.", A:"Веприцкий А.", C:"", I:"Голуб В.", deadline:"Ежедневно до 16:00", block:"2. Набор"},
+    {id:"2.3", task:"Пост-анонс в VK с регистрацией", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"Голуб В., Веприцкий А.", deadline:"2026-05-04", block:"2. Набор"},
+    {id:"2.4", task:"Передача заявок из VK Веприцкому", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"Голуб В., Веприцкий А.", deadline:"По мере", block:"2. Набор"},
+    {id:"2.5", task:"Уведомление подтвердившим за неделю", R:"Лапа О.", A:"Лапа О.", C:"", I:"Голуб В., Веприцкий А.", deadline:"2026-05-13", block:"2. Набор"},
+    {id:"2.6", task:"Мониторинг остаточного эффекта рассылки", R:"Лапа О.", A:"Голуб В.", C:"", I:"Голуб В.", deadline:"Ежедневно", block:"2. Набор"},
+    {id:"2.7", task:"Контрольный прозвон (за 2 дня)", R:"Менеджеры КА", A:"Веприцкий А.", C:"", I:"Голуб В.", deadline:"2026-05-17", block:"2. Набор"},
+    {id:"2.8", task:"Финальный список участников", R:"Веприцкий А.", A:"Веприцкий А.", C:"", I:"Голуб В.", deadline:"2026-05-18", block:"2. Набор"},
+    {id:"3.1", task:"Закуп главного приза (Toua, 35 000 ₽)", R:"Белкина Е.", A:"Голуб В.", C:"Першин И.", I:"", deadline:"2026-05-14", block:"3. Призы"},
+    {id:"3.2", task:"Закуп 3-х малых призов (инструмент)", R:"Белкина Е.", A:"Голуб В.", C:"Першин И.", I:"", deadline:"2026-05-14", block:"3. Призы"},
+    {id:"3.3", task:"Заказ мерча (блокноты, ручки, рулетки)", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"3. Призы"},
+    {id:"3.4", task:"Пустые визитки для розыгрыша", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"3. Призы"},
+    {id:"4.1", task:"Подбор инструмента для заказа (аренда)", R:"Першин И.", A:"Першин И.", C:"", I:"Голуб В.", deadline:"2026-05-07", block:"4. Практикум"},
+    {id:"4.2", task:"Заказ инструмента", R:"Белкина Е.", A:"Голуб В.", C:"Першин И.", I:"Голуб В.", deadline:"2026-05-11", block:"4. Практикум"},
+    {id:"4.3", task:"Изготовление 4-х стендов", R:"Першин И.", A:"Першин И.", C:"Чурсин Ю.", I:"Голуб В.", deadline:"2026-05-14", block:"4. Практикум"},
+    {id:"4.4", task:"Подбор расходных материалов для стенда", R:"Першин И.", A:"Першин И.", C:"", I:"Голуб В.", deadline:"2026-05-06", block:"4. Практикум"},
+    {id:"4.5", task:"Заказ расходных материалов для стенда", R:"Белкина Е.", A:"Белкина Е.", C:"Першин И.", I:"Голуб В.", deadline:"2026-05-11", block:"4. Практикум"},
+    {id:"4.6", task:"Подбор образцов по номенклатуре для стендов", R:"Першин И.", A:"Першин И.", C:"Чурсин Ю.", I:"Голуб В.", deadline:"2026-05-08", block:"4. Практикум"},
+    {id:"4.7", task:"Заказ образцов по номенклатуре для стендов", R:"Белкина Е.", A:"Голуб В.", C:"Першин И.", I:"", deadline:"2026-05-12", block:"4. Практикум"},
+    {id:"4.8", task:"Перемещение образцов со склада на площадку", R:"Першин И.", A:"Першин И.", C:"", I:"Голуб В.", deadline:"2026-05-19", block:"4. Практикум"},
+    {id:"5.1", task:"Проверка готовности цеха", R:"Голуб В.", A:"Гостев С.", C:"", I:"", deadline:"2026-05-07", block:"5. Экскурсия"},
+    {id:"5.2", task:"Заказ недостающих жилеток", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"5. Экскурсия"},
+    {id:"5.3", task:"Инструктаж по ТБ (журнал)", R:"Зинков А.", A:"Зинков А.", C:"", I:"Кузнецова С.", deadline:"2026-05-19", block:"5. Экскурсия"},
+    {id:"5.4", task:"Инструктаж по ТБ (точка сбора)", R:"Зинков А.", A:"Зинков А.", C:"", I:"Голуб В.", deadline:"2026-05-20", block:"5. Экскурсия"},
+    {id:"5.5", task:"Экскурсия (2 группы, параллельно)", R:"Гостев С., Асканаков В.", A:"Гостев С.", C:"", I:"Голуб В.", deadline:"2026-05-20", block:"5. Экскурсия"},
+    {id:"5.6", task:"Проверка гарнитур", R:"Лапа О.", A:"Лапа О.", C:"", I:"Голуб В.", deadline:"2026-05-08", block:"5. Экскурсия"},
+    {id:"5.7", task:"Проверка аренда гарнитур", R:"Лапа О.", A:"Лапа О.", C:"", I:"Голуб В.", deadline:"2026-05-19", block:"5. Экскурсия"},
+    {id:"5.8", task:"Онлайн-трансляция: установка оборудования", R:"Лапа О.", A:"Лапа О.", C:"", I:"Голуб В.", deadline:"2026-05-19", block:"5. Экскурсия"},
+    {id:"5.9", task:'Онлайн-трансляция: "техничка"', R:"Лапа О.", A:"Лапа О.", C:"Гостев С.", I:"Голуб В.", deadline:"2026-05-19", block:"5. Экскурсия"},
+    {id:"5.10", task:"Экскурсия на Станционной проведение", R:"Логинова И.", A:"Голуб В.", C:"", I:"", deadline:"2026-05-20", block:"5. Экскурсия"},
+    {id:"6.1", task:"Заказ автобуса", R:"Бахтеева С.", A:"Кузнецова С.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"6. Логистика"},
+    {id:"6.2", task:"Аренда зала", R:"Кузнецова С.", A:"Кузнецова С.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"6. Логистика"},
+    {id:"6.3", task:"Кейтеринг", R:"Кузнецова С.", A:"Кузнецова С.", C:"", I:"Голуб В.", deadline:"2026-05-15", block:"6. Логистика"},
+    {id:"7.1", task:"Договор с видеографом", R:"Белкина Е.", A:"Белкина Е.", C:"", I:"", deadline:"2026-05-14", block:"7. Контент"},
+    {id:"7.2", task:"Фото", R:"Лапа О., видеограф", A:"Белкина Е.", C:"", I:"", deadline:"2026-05-20", block:"7. Контент"},
+    {id:"7.3", task:"Отбор и обработка контента для VK", R:"Лапа О.", A:"Белкина Е.", C:"", I:"Голуб В.", deadline:"2026-05-22", block:"7. Контент"},
+    {id:"8.1", task:"Разработка анкеты обратной связи", R:"Голуб В.", A:"Голуб В.", C:"Белкина Е.", I:"", deadline:"2026-05-15", block:"8. Обратная связь"},
+    {id:"8.2", task:"Сбор анкет", R:"Белкина Е.", A:"Голуб В.", C:"", I:"", deadline:"2026-05-20", block:"8. Обратная связь"},
+    {id:"8.3", task:"Сводный отчёт по мероприятию", R:"Голуб В.", A:"Голуб В.", C:"", I:"Райчук Ю.", deadline:"2026-05-25", block:"8. Обратная связь"}
+];
+
+const milestones = [
+    {date:"2026-05-04", title:"Старт проекта", desc:"Пост VK запущен. Прозвон клиентов КА начат. Первая сводка от Веприцкого.", participants:["Голуб В.","Белкина Е.","Веприцкий А."], type:"check"},
+    {date:"2026-05-05", title:"Первый стендап", desc:"Первая ежедневная синхронизация. Проверить статус прозвона, готовность цеха.", participants:["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], type:"check"},
+    {date:"2026-05-06", title:"Подбор расходных материалов", desc:"Першин И. должен передать перечень расходников для стендов.", participants:["Першин И."], type:"deadline"},
+    {date:"2026-05-07", title:"Проверка готовности цеха + Подбор инструмента", desc:"Голуб В. + Гостев С. осматривают цех. Першин И. передаёт перечень инструмента.", participants:["Голуб В.","Гостев С.","Першин И."], type:"deadline"},
+    {date:"2026-05-08", title:"Сбор фич + Проверка гарнитур + Подбор образцов", desc:"Голуб В. собирает фишки. Лапа О. проверяет гарнитуры. Першин И. подбирает образцы.", participants:["Голуб В.","Чурсин Ю.","Лапа О.","Першин И."], type:"deadline"},
+    {date:"2026-05-09", title:"День Победы", desc:"Праздничный день. Работы не планируются.", participants:[], type:"pause"},
+    {date:"2026-05-11", title:"Заказ инструмента + расходников", desc:"Белкина Е. оформляет заказ инструмента и расходных материалов.", participants:["Белкина Е."], type:"deadline"},
+    {date:"2026-05-12", title:"Сценарий дня + Заказ образцов", desc:"Голуб В. утверждает поминутный сценарий. Белкина Е. заказывает образцы СПК.", participants:["Голуб В.","Белкина Е."], type:"deadline"},
+    {date:"2026-05-13", title:"Программа, маршрут, практикум + Уведомление", desc:"Утверждение трёх документов. Лапа О. отправляет уведомление подтверждённым.", participants:["Голуб В.","Лапа О.","Веприцкий А."], type:"deadline"},
+    {date:"2026-05-14", title:"Призы закуплены + Стенды готовы + Видеограф", desc:"Toua и малые призы на руках. 4 стенда изготовлены. Договор с видеографом подписан.", participants:["Белкина Е.","Першин И."], type:"deadline"},
+    {date:"2026-05-15", title:"ПРОМЕЖУТОЧНЫЙ ДОКЛАД РАЙЧУКУ Ю.", desc:"Статус проекта: явка, бюджет, готовность. Мерч, жилетки, визитки заказаны. Автобус, зал, кейтеринг подтверждены.", participants:["Голуб В.","Райчук Ю."], type:"report"},
+    {date:"2026-05-17", title:"Контрольный прозвон", desc:"Менеджеры КА обзванивают подтверждённых участников.", participants:["Менеджеры КА","Веприцкий А."], type:"deadline"},
+    {date:"2026-05-18", title:"Финальный список участников", desc:"Веприцкий А. передаёт список с ФИО и телефонами.", participants:["Веприцкий А."], type:"deadline"},
+    {date:"2026-05-19", title:"День тишины — финальная подготовка", desc:"Перемещение образцов. Проверка гарнитур. Установка трансляции. Инструктаж по ТБ.", participants:["Першин И.","Лапа О.","Зинков А."], type:"deadline"},
+    {date:"2026-05-20", title:"ДЕНЬ МОНТАЖНИКА", desc:"09:45 – 17:00. Полный сценарий дня.", participants:["ВСЕ"], type:"event"},
+    {date:"2026-05-22", title:"Контент для VK", desc:"Лапа О. отбирает и обрабатывает фото/видео.", participants:["Лапа О.","Белкина Е."], type:"deadline"},
+    {date:"2026-05-25", title:"ФИНАЛЬНЫЙ ОТЧЁТ РАЙЧУКУ Ю.", desc:"Сводный отчёт: KPI, бюджет, обратная связь.", participants:["Голуб В.","Райчук Ю."], type:"report"},
+];
+
+const escalations = [
+    {trigger:"Явка < 15 чел. к 10.05", action:"Эскалация к Райчуку. Экстренный таргет VK.", deadline:"2026-05-10"},
+    {trigger:"Явка < 20 чел. к 13.05", action:"Эскалация к Райчуку. Обзвон силами ЗЭТА.", deadline:"2026-05-13"},
+    {trigger:"Toua не закуплен к 14.05", action:"Замена приза. Согласование с Райчуком.", deadline:"2026-05-14"},
+    {trigger:"Стенды не готовы к 16.05", action:"Эскалация к Чурсину. Ручная сборка.", deadline:"2026-05-16"},
+    {trigger:"Автобус не подтверждён к 15.05", action:"Срочный поиск альтернативы (Кузнецова).", deadline:"2026-05-15"},
+    {trigger:"Гарнитуры не работают (19.05)", action:"Отказ от онлайн-трансляции. Замена на рассказ Гостева.", deadline:"2026-05-19"},
+    {trigger:"Травма участника на производстве", action:"Немедленная эскалация к Райчуку и Гостеву. Стоп-мероприятие.", deadline:"2026-05-20"},
+];
+
+const rpChecklistData = [
+    {section: "ЕЖЕДНЕВНО (каждый рабочий день, утро)", items: ["Проверить сводку от Веприцкого за вчера", "Проверить мониторинг рассылки от Лапы", "Провести ежедневный стендап в 09:00 МСК (15 мин)", "Ответить на все вопросы в чате Yougile", "Актуализировать done-задачи в матрице"]},
+    {section: "ЕЖЕДНЕВНО (каждый рабочий день, вечер)", items: ["Получить сводку от Веприцкого до 16:00", "Запросить статус у Белкиной (заказы, призы, мерч)", "Запросить статус у Першина (стенды, образцы)", "Сверить план-факт по контрольным точкам"]},
+    {section: "04 МАЯ — СТАРТ", items: ["Проверить, что Белкина запустила пост-анонс в VK", "Направить Веприцкому сообщение о старте прозвона", "Создать чат в Yougile: вы, Лапа, Слободянюк, Веприцкий"]},
+    {section: "07 МАЯ — ПРОВЕРКА ЦЕХА", items: ["Лично выехать в цех с Гостевым С.", "Проверить: чистота, маршрут, безопасность", "Подтвердить у Першина: перечень инструмента готов"]},
+    {section: "08 МАЯ — ФИЧИ + ГАРНИТУРЫ", items: ["Собрать фичи для теории. Верифицировать с Чурсиным", "Подтвердить у Лапы: гарнитуры проверены", "Подтвердить у Першина: перечень образцов СПК готов"]},
+    {section: "10 МАЯ — КОНТРОЛЬНАЯ ТОЧКА ПО ЯВКЕ", items: ["Запросить у Веприцкого: сколько подтверждённых", "Если < 15 — эскалация к Райчуку", "Если ≥ 15 — продолжаем в штатном режиме"]},
+    {section: "12 МАЯ — СЦЕНАРИЙ ДНЯ", items: ["Утвердить поминутный сценарий дня", "Подтвердить у Белкиной: заказ образцов СПК оформлен"]},
+    {section: "13 МАЯ — УТВЕРЖДЕНИЕ ПРОГРАММЫ", items: ["Утвердить: программа, маршрут экскурсии, практикум", "Подтвердить у Лапы: уведомление отправлено", "Проверить явку: если < 20 — эскалация к Райчуку"]},
+    {section: "14 МАЯ — ПРИЗЫ И СТЕНДЫ", items: ["Лично проверить: Toua и малые призы на руках", "Подтвердить у Першина: 4 стенда изготовлены", "Подтвердить у Белкиной: договор с видеографом подписан"]},
+    {section: "15 МАЯ — ДОКЛАД РАЙЧУКУ", items: ["Подготовить краткую презентацию", "Провести встречу с Райчуком Ю.", "Подтвердить: мерч, жилетки, визитки заказаны", "Подтвердить: автобус, зал, кейтеринг (Кузнецова)"]},
+    {section: "17 МАЯ — КОНТРОЛЬНЫЙ ПРОЗВОН", items: ["Подтвердить у Веприцкого: контрольный прозвон проведён", "Получить предварительный список участников"]},
+    {section: "18 МАЯ — ФИНАЛЬНЫЙ СПИСОК", items: ["Получить от Веприцкого финальный список", "Передать список Кузнецовой для регистрации", "Передать список Гостеву для журнала ТБ"]},
+    {section: "19 МАЯ — ДЕНЬ ТИШИНЫ", items: ["Финальный обход площадки", "Проверить готовность стендов", "Проверить гарнитуры и трансляцию", "Подтвердить автобус и кейтеринг", "Провести финальную планерку со ВСЕМИ"]},
+    {section: "20 МАЯ — ДЕНЬ Х", items: ["Быть Модератором", "Делегировать проблемы Кузнецовой (Дежурный РП)", "Собрать анкеты обратной связи", "Провести розыгрыш призов", "Закрыть мероприятие"]},
+    {section: "22 МАЯ — КОНТЕНТ", items: ["Подтвердить контент для VK", "Согласовать пост перед публикацией"]},
+    {section: "25 МАЯ — ФИНАЛЬНЫЙ ОТЧЁТ", items: ["Подготовить сводный отчёт (KPI, бюджет)", "Направить отчёт Райчуку Ю.", "Закрыть проект"]}
+];
+
+// Генерация графика планерок (восстановление логики из оригинального файла)
+const MS_DAY = 86400000;
+const today = new Date('2026-05-04T00:00:00');
+const dailySyncs = [];
+for (let d = new Date('2026-05-05T00:00:00'); d <= new Date('2026-05-20T00:00:00'); d = new Date(d.getTime() + MS_DAY)) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6 && d.toISOString().split('T')[0] !== '2026-05-09') {
+        dailySyncs.push({ date: d.toISOString().split('T')[0], time: "09:00 МСК", title: "Ежедневный стендап", desc: "15 минут. Статус по задачам, блокеры.", participants: ["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], channel: "Yougile / Звонок" });
+    }
+}
+const weeklySyncs = [
+    {date:"2026-05-06", time:"09:00 МСК", title:"Расширенная планерка", desc:"Обсуждение сценария, фич, готовности цеха.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Асканаков В."], channel:"Yougile"},
+    {date:"2026-05-13", time:"09:00 МСК", title:"Расширенная планерка", desc:"Утверждение сценария, программы. Статус набора.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Веприцкий А."], channel:"Yougile"},
+    {date:"2026-05-19", time:"09:00 МСК", title:"Финальная планерка", desc:"Последняя сверка перед мероприятием.", participants:["ВСЕ"], channel:"Yougile / Очно"}
+];
+
+
+// ============================================================================
+// 3. ФУНКЦИОНАЛ ПРИЛОЖЕНИЙ
+// ============================================================================
+function switchApp(appId) {
+    document.querySelectorAll('.app-module').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.g-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(appId).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+
+// --- ЛОГИКА МАТРИЦЫ ---
+let currentMatrixView = 'table';
+let currentStatusFilter = 'all';
+
+function parseDeadline(dl) { if (!dl || dl.startsWith('Ежедневно') || dl.startsWith('По мере')) return null; const d = new Date(dl + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; }
+function daysUntil(dl) { const d = parseDeadline(dl); return d ? Math.ceil((d - today) / MS_DAY) : Infinity; }
+function getStatus(t) {
+    if (doneTasksCloud[t.id]) return 'done';
+    const days = daysUntil(t.deadline);
+    if (days === Infinity) return 'ok';
+    if (days < 0) return 'danger';
+    if (days <= 3) return 'warning';
+    if (days === 0) return 'today';
+    return 'ok';
+}
+
+function getFilteredTasks() {
+    const person = document.getElementById('filterPerson').value;
+    const block = document.getElementById('filterBlock').value;
+    const search = document.getElementById('filterSearch').value.toLowerCase();
+    let result = [...tasks];
+
+    if (person !== 'all') result = result.filter(t => [t.R,t.A,t.C,t.I].join(' ').includes(person));
+    if (block !== 'all') result = result.filter(t => t.block === block);
+    if (search) result = result.filter(t => t.task.toLowerCase().includes(search) || t.id.includes(search) || (t.R||'').toLowerCase().includes(search) || (t.A||'').toLowerCase().includes(search));
+
+    if (currentStatusFilter === 'urgent') result = result.filter(t => getStatus(t) === 'warning');
+    if (currentStatusFilter === 'overdue') result = result.filter(t => getStatus(t) === 'danger');
+    if (currentStatusFilter === 'today') result = result.filter(t => getStatus(t) === 'today' || getStatus(t) === 'warning');
+    if (currentStatusFilter === 'done') result = result.filter(t => doneTasksCloud[t.id]);
+
+    result.sort((a,b) => {
+        const da = daysUntil(a.deadline), db = daysUntil(b.deadline);
+        if (da === Infinity && db === Infinity) return a.id.localeCompare(b.id);
+        if (da === Infinity) return 1; if (db === Infinity) return -1;
+        return da - db;
+    });
+    return result;
+}
+
+function renderTable(filtered) {
+    const tbody = document.getElementById('tableBody');
+    if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#999;">Нет задач</td></tr>'; updateStats(filtered); return; }
+    tbody.innerHTML = filtered.map(t => {
+        const st = getStatus(t);
+        let rowClass = st === 'danger' ? 'row-danger' : st === 'warning' ? 'row-warning' : st === 'done' ? 'row-done' : '';
+        let stTag = st === 'danger' ? '<span class="tag tag-red">Просрочено</span>' : st === 'warning' ? '<span class="tag tag-yellow">Срочно</span>' : st === 'done' ? '<span class="tag tag-green">Выполнено</span>' : st === 'today' ? '<span class="tag tag-yellow">Сегодня</span>' : '<span class="tag tag-blue">Ок</span>';
+        return `<tr class="${rowClass}"><td>${t.id}</td><td class="task-name">${t.task}</td><td>${t.R?`<span class="tag tag-blue">${t.R}</span>`:'—'}</td><td>${t.A?`<span class="tag tag-purple">${t.A}</span>`:'—'}</td><td>${t.C||'—'}</td><td>${t.I||'—'}</td><td><strong>${t.deadline}</strong></td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${doneTasksCloud[t.id]?'checked':''} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
+    }).join('');
+    updateStats(filtered);
+}
+
+function renderCalendar(filtered) {
+    const grid = document.getElementById('calendarGrid');
+    let minD = new Date('2026-05-04'), maxD = new Date('2026-05-25');
+    const byDate = {};
+    filtered.forEach(t => { const d = parseDeadline(t.deadline); const k = d ? d.toISOString().split('T')[0] : 'nodate'; if (!byDate[k]) byDate[k] = []; byDate[k].push(t); });
+    const dates = []; for (let d = new Date(minD); d <= maxD; d = new Date(d.getTime() + MS_DAY)) dates.push(new Date(d));
+    grid.innerHTML = dates.map(d => {
+        const k = d.toISOString().split('T')[0], items = byDate[k] || [];
+        const isToday = d.getTime() === today.getTime(), isWkd = d.getDay()%6===0, isPast = d < today && items.length>0;
+        let hc = isPast ? 'overdue' : isToday ? 'today' : isWkd ? 'weekend' : '';
+        let html = `<div class="cal-day"><div class="cal-day-header ${hc}">${d.toLocaleDateString('ru-RU',{weekday:'short'})}, ${d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</div>`;
+        if (!items.length) html += '<div class="cal-empty">—</div>';
+        else items.forEach(t => html += `<div class="cal-item ${doneTasksCloud[t.id]?'done':''}" title="${t.task}"><span class="cal-who">${t.R||t.A}</span><br>${t.task.substring(0,50)}</div>`);
+        return html + '</div>';
+    }).join('');
+    updateStats(filtered);
+}
+
+function renderCP(filtered) {
+    const cpDiv = document.getElementById('cpTable');
+    const cpTasks = filtered.filter(t => t.deadline !== 'Ежедневно' && t.deadline !== 'По мере' && t.deadline !== 'Ежедневно до 16:00' && t.deadline !== 'Ежедневно до 10:00');
+    cpTasks.sort((a,b) => { const da=parseDeadline(a.deadline), db=parseDeadline(b.deadline); if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1; return da-db; });
+    cpDiv.innerHTML = `<table><thead><tr><th>Дата</th><th>Задача</th><th>Ответственный</th><th>Ожидаемый результат</th><th>Статус</th><th>✓</th></tr></thead><tbody>${cpTasks.map(t => {
+        const st = getStatus(t); 
+        let stTag = st==='danger'?'<span class="tag tag-red">Просрочено</span>':st==='warning'?'<span class="tag tag-yellow">Срочно</span>':st==='done'?'<span class="tag tag-green">Выполнено</span>':st==='today'?'<span class="tag tag-yellow">Сегодня</span>':'<span class="tag tag-blue">Ок</span>';
+        let rowClass = st==='danger'?'row-danger':st==='warning'?'row-warning':st==='done'?'row-done':'';
+        return `<tr class="${rowClass}"><td><strong>${t.deadline}</strong></td><td class="task-name">${t.task}</td><td>${t.A||t.R}</td><td>${t.task}</td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${doneTasksCloud[t.id]?'checked':''} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
+    }).join('')}</tbody></table>`;
+    updateStats(filtered);
+}
+
+function updateStats(filtered) {
+    document.getElementById('statTotal').textContent = tasks.length;
+    document.getElementById('statUrgent').textContent = tasks.filter(t => getStatus(t)==='warning').length;
+    document.getElementById('statOverdue').textContent = tasks.filter(t => getStatus(t)==='danger').length;
+    document.getElementById('statToday').textContent = tasks.filter(t => getStatus(t)==='today' || getStatus(t)==='warning').length;
+    document.getElementById('statDone').textContent = Object.keys(doneTasksCloud).length;
+}
+
+function setMatrixView(view) {
+    currentMatrixView = view;
+    document.getElementById('viewTable').classList.toggle('hidden', view !== 'table');
+    document.getElementById('viewCalendar').classList.toggle('hidden', view !== 'calendar');
+    document.getElementById('viewCP').classList.toggle('hidden', view !== 'cp');
+    ['btnViewTable','btnViewCalendar','btnViewCP'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (view === 'table') document.getElementById('btnViewTable').classList.add('active');
+    if (view === 'calendar') document.getElementById('btnViewCalendar').classList.add('active');
+    if (view === 'cp') document.getElementById('btnViewCP').classList.add('active');
+    applyFilters();
+}
+
+function applyFilters() {
+    const filtered = getFilteredTasks();
+    if (currentMatrixView === 'table') renderTable(filtered);
+    else if (currentMatrixView === 'calendar') renderCalendar(filtered);
+    else renderCP(filtered);
+}
+
+function filterByStatus(status) { currentStatusFilter = currentStatusFilter === status ? 'all' : status; applyFilters(); }
+function resetFilters() { document.getElementById('filterPerson').value = 'all'; document.getElementById('filterBlock').value = 'all'; document.getElementById('filterSearch').value = ''; currentStatusFilter = 'all'; applyFilters(); }
+
+function initMatrix() {
+    const peopleSet = new Set();
+    tasks.forEach(t => [t.R,t.A,t.C,t.I].forEach(f => { if(f) f.split(',').forEach(p => { const n = p.replace(/\(.*?\)/g,'').trim(); if(n) peopleSet.add(n); }); }));
+    const selP = document.getElementById('filterPerson');
+    [...peopleSet].sort().forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; selP.appendChild(o); });
+    const blocks = [...new Set(tasks.map(t=>t.block))].sort();
+    const selB = document.getElementById('filterBlock');
+    blocks.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; selB.appendChild(o); });
+}
+
+// --- ЛОГИКА КОНСОЛИ РП ---
+function daysFromNow(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return Math.ceil((d - today) / MS_DAY); }
+
+function renderConsoleCalendar() {
+    document.getElementById('calGrid').innerHTML = milestones.map(m => {
+        const days = daysFromNow(m.date);
+        let daysClass = 'normal'; let daysText = days + ' дн.';
+        if (days < 0) { daysClass = 'past'; daysText = 'Просрочено'; } else if (days === 0) { daysClass = 'urgent'; daysText = 'Сегодня'; } else if (days <= 3) { daysClass = 'urgent'; daysText = days + ' дн.'; } else if (days <= 7) { daysClass = 'soon'; daysText = days + ' дн.'; }
+        let cardClass = ''; if (m.type === 'report') cardClass = 'warning'; else if (days < 0) cardClass = 'danger'; else if (days === 0) cardClass = 'warning'; else if (m.type === 'event') cardClass = 'success';
+        const d = new Date(m.date + 'T00:00:00');
+        const weekday = d.toLocaleDateString('ru-RU', {weekday:'long'}); const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+        return `<div class="card ${cardClass}"><div class="card-header"><div><div class="card-date">${dateStr}</div><div class="card-weekday">${weekday}</div></div><span class="card-days ${daysClass}">${daysText}</span></div><div class="card-title">${m.title}</div><div class="card-desc">${m.desc}</div><div class="card-participants">${m.participants.map(p => `<span class="tag tag-blue">${p}</span>`).join(' ')}</div></div>`;
+    }).join('');
+}
+
+function renderSyncGrid() {
+    const allSyncs = [...dailySyncs, ...weeklySyncs].sort((a,b) => a.date.localeCompare(b.date));
+    document.getElementById('syncGrid').innerHTML = allSyncs.map(s => {
+        const days = daysFromNow(s.date); let daysText = days + ' дн.'; if (days < 0) daysText = 'Прошло'; else if (days === 0) daysText = 'Сегодня';
+        const d = new Date(s.date + 'T00:00:00'); const weekday = d.toLocaleDateString('ru-RU', {weekday:'long'}); const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+        return `<div class="card"><div class="card-header"><div><div class="card-date">${dateStr}</div><div class="card-weekday">${weekday} · ${s.time}</div></div><span class="card-days normal">${daysText}</span></div><div class="card-title">${s.title}</div><div class="card-desc">${s.desc} <br>📡 Канал: ${s.channel}</div><div class="card-participants">${s.participants.map(p => `<span class="tag tag-purple">${p}</span>`).join(' ')}</div></div>`;
+    }).join('');
+}
+
+function renderEscalations() {
+    document.getElementById('escTable').innerHTML = `<table><thead><tr><th>Триггер</th><th>Действие</th><th>Дедлайн проверки</th><th>Статус</th></tr></thead><tbody>${escalations.map(e => {
+        const days = daysFromNow(e.deadline); let rowClass = ''; let stTag = '';
+        if (days < 0) { rowClass = 'esc-danger'; stTag = '<span class="tag tag-red">Проверить немедленно</span>'; } else if (days <= 3) { rowClass = 'esc-active'; stTag = '<span class="tag tag-yellow">Активный контроль</span>'; } else { stTag = '<span class="tag tag-green">Ок</span>'; }
+        return `<tr class="${rowClass}"><td>${e.trigger}</td><td>${e.action}</td><td><strong>${e.deadline}</strong> (${days < 0 ? 'просрочено' : days + ' дн.'})</td><td>${stTag}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderRP() {
+    document.getElementById('rpChecklist').innerHTML = rpChecklistData.map((section, si) => {
+        return `<div class="checklist-section"><h3>${section.section}</h3>${section.items.map((item, ii) => {
+            const key = si + '-' + ii; const checked = !!doneRPCloud[key]; // Данные из облака
+            return `<div class="checklist-item ${checked ? 'done' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="window._rpToggleCloud('${key}')"><label>${item}</label></div>`;
+        }).join('')}</div>`;
+    }).join('');
+}
+
+function setConsoleView(view) {
+    ['cal','sync','esc','rp'].forEach((v, i) => {
+        document.getElementById(['viewCal','viewSync','viewEsc','viewRP'][i]).classList.toggle('hidden', v !== view);
+        document.getElementById(['btnCal','btnSync','btnEsc','btnRP'][i]).classList.remove('active');
+    });
+    document.getElementById('btn' + view.charAt(0).toUpperCase() + view.slice(1)).classList.add('active');
+    if (view === 'rp') renderRP();
+}
+
+// Запуск интерфейсов
+initMatrix();
+applyFilters();
+renderConsoleCalendar();
+renderSyncGrid();
+renderEscalations();
+
+// Подстраховка на случай, если Firebase заблокирован корпоративным файрволом
+setTimeout(() => {
+    const status = document.getElementById('cloudStatus');
+    if (status.classList.contains('offline')) {
+        document.getElementById('cloudText').innerText = "Ошибка БД: Проверьте сеть или URL";
+    }
+}, 3000);
+</script>
+</body>
+</html>
