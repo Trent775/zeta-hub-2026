@@ -18,7 +18,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
 
-        /* ═══════════ ГЛОБАЛЬНАЯ НАВИГАЦИЯ ═══════════ */
         .global-nav { background: #000; color: #fff; padding: 10px 24px; display: flex; gap: 15px; align-items: center; position: sticky; top: 0; z-index: 9999; }
         .global-nav span { font-weight: bold; margin-right: 20px; color: #aaa; letter-spacing: 1px;}
         .g-btn { background: #333; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
@@ -32,7 +31,6 @@
         .app-module { display: none; }
         .app-module.active { display: block; }
 
-        /* ═══════════ СТИЛИ ИНТЕРФЕЙСОВ ═══════════ */
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 18px 24px; position: sticky; top: 45px; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
         .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
         .header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.3px; }
@@ -42,6 +40,7 @@
         .stat:hover { background: rgba(255,255,255,0.2); }
         .stat .val { font-weight: 700; font-size: 1.1rem; }
         .stat .lbl { opacity: 0.7; font-size: 0.68rem; }
+        
         .toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 145px; z-index: 99; }
         .toolbar select, .toolbar input { padding: 6px 10px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 0.83rem; background: #fff; min-width: 150px; font-family: inherit; }
         .toolbar select:focus, .toolbar input:focus { outline: none; border-color: var(--accent); }
@@ -52,7 +51,6 @@
         .toolbar .spacer { flex: 1; }
         .content { padding: 14px 24px 40px; }
 
-        /* Таблицы */
         .table-wrapper, .cp-table, .esc-table { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 0.81rem; min-width: 1150px; }
         .esc-table table { min-width: 800px; }
@@ -66,7 +64,6 @@
         tr.row-done td { background: #f6fdf6; color: #888; }
         tr.row-done td.task-name { text-decoration: line-through; }
 
-        /* Теги и Чекбоксы */
         .tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
         .tag-blue { background: var(--tag-blue); color: #0d47a1; }
         .tag-green { background: var(--tag-green); color: #1b5e20; }
@@ -75,7 +72,6 @@
         .tag-purple { background: var(--tag-purple); color: #6a1b9a; }
         .done-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--success); }
 
-        /* Календарь и Карточки */
         .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
         .cal-day { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
@@ -105,7 +101,6 @@
         .card-desc { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 6px; }
         .card-participants { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 
-        /* Чек-лист РП */
         .checklist-section { margin-bottom: 14px; }
         .checklist-section h3 { font-size: 0.85rem; font-weight: 700; padding: 6px 10px; background: #fafafa; border-radius: 4px; margin-bottom: 6px; }
         .checklist-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #f5f5f5; font-size: 0.8rem; }
@@ -201,10 +196,8 @@ const database = firebase.database();
 let doneTasksCloud = {};
 let doneRPCloud = {};
 
-// === ИНЖЕНЕРНОЕ ИСПРАВЛЕНИЕ: ЭКРАНИРОВАНИЕ ТОЧЕК В ID ===
-function safeId(id) { return id.replace(/\./g, '_'); } // "1.1" -> "1_1"
+function safeId(id) { return id.replace(/\./g, '_'); }
 
-// Слушатель базы: Задачи
 database.ref('matrixDone').on('value', (snapshot) => {
     doneTasksCloud = snapshot.val() || {};
     document.getElementById('cloudStatus').classList.remove('offline');
@@ -212,7 +205,6 @@ database.ref('matrixDone').on('value', (snapshot) => {
     applyFilters();
 });
 
-// Слушатель базы: Чек-лист РП
 database.ref('rpChecklist').on('value', (snapshot) => {
     doneRPCloud = snapshot.val() || {};
     if (!document.getElementById('viewRP').classList.contains('hidden')) {
@@ -220,21 +212,20 @@ database.ref('rpChecklist').on('value', (snapshot) => {
     }
 });
 
-// Отправка в облако (ИСПРАВЛЕНО: используем safeId)
 function toggleTaskCloud(id) {
     const sId = safeId(id);
     const isDone = !!doneTasksCloud[sId];
     database.ref('matrixDone/' + sId).set(isDone ? null : true);
 }
+
 window._rpToggleCloud = function(key) {
-    // В чек-листе ключи типа "0-1", точек нет, но для безопасности:
     const sKey = safeId(key);
     const isDone = !!doneRPCloud[sKey];
     database.ref('rpChecklist/' + sKey).set(isDone ? null : true);
 };
 
 // ============================================================================
-// 2. ПОЛНЫЕ МАССИВЫ ДАННЫХ
+// 2. ДАННЫЕ
 // ============================================================================
 const tasks = [
     {id:"1.1", task:"Поминутный сценарий дня", R:"Голуб В.", A:"Голуб В.", C:"", I:"Все", deadline:"2026-05-12", block:"1. Методика"},
@@ -285,46 +276,46 @@ const tasks = [
 ];
 
 const milestones = [
-    {date:"2026-05-04", title:"Старт проекта", desc:"Пост VK запущен. Прозвон клиентов КА начат. Первая сводка от Веприцкого.", participants:["Голуб В.","Белкина Е.","Веприцкий А."], type:"check"},
-    {date:"2026-05-05", title:"Первый стендап", desc:"Первая ежедневная синхронизация. Проверить статус прозвона, готовность цеха.", participants:["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], type:"check"},
-    {date:"2026-05-06", title:"Подбор расходных материалов", desc:"Першин И. должен передать перечень расходников для стендов.", participants:["Першин И."], type:"deadline"},
-    {date:"2026-05-07", title:"Проверка готовности цеха + Подбор инструмента", desc:"Голуб В. + Гостев С. осматривают цех. Першин И. передаёт перечень инструмента.", participants:["Голуб В.","Гостев С.","Першин И."], type:"deadline"},
-    {date:"2026-05-08", title:"Сбор фич + Проверка гарнитур + Подбор образцов", desc:"Голуб В. собирает фишки. Лапа О. проверяет гарнитуры. Першин И. подбирает образцы.", participants:["Голуб В.","Чурсин Ю.","Лапа О.","Першин И."], type:"deadline"},
+    {date:"2026-05-04", title:"Старт проекта", desc:"Пост VK запущен. Прозвон клиентов КА начат.", participants:["Голуб В.","Белкина Е.","Веприцкий А."], type:"check"},
+    {date:"2026-05-05", title:"Первый стендап", desc:"Первая ежедневная синхронизация.", participants:["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], type:"check"},
+    {date:"2026-05-06", title:"Подбор расходных материалов", desc:"Першин И. должен передать перечень.", participants:["Першин И."], type:"deadline"},
+    {date:"2026-05-07", title:"Проверка готовности цеха", desc:"Голуб В. + Гостев С. осматривают цех.", participants:["Голуб В.","Гостев С.","Першин И."], type:"deadline"},
+    {date:"2026-05-08", title:"Сбор фич + Проверка гарнитур", desc:"Голуб В. собирает фишки. Лапа О. проверяет гарнитуры.", participants:["Голуб В.","Чурсин Ю.","Лапа О.","Першин И."], type:"deadline"},
     {date:"2026-05-09", title:"День Победы", desc:"Праздничный день. Работы не планируются.", participants:[], type:"pause"},
-    {date:"2026-05-11", title:"Заказ инструмента + расходников", desc:"Белкина Е. оформляет заказ инструмента и расходных материалов.", participants:["Белкина Е."], type:"deadline"},
-    {date:"2026-05-12", title:"Сценарий дня + Заказ образцов", desc:"Голуб В. утверждает поминутный сценарий. Белкина Е. заказывает образцы СПК.", participants:["Голуб В.","Белкина Е."], type:"deadline"},
-    {date:"2026-05-13", title:"Программа, маршрут, практикум + Уведомление", desc:"Утверждение трёх документов. Лапа О. отправляет уведомление подтверждённым.", participants:["Голуб В.","Лапа О.","Веприцкий А."], type:"deadline"},
-    {date:"2026-05-14", title:"Призы закуплены + Стенды готовы + Видеограф", desc:"Toua и малые призы на руках. 4 стенда изготовлены. Договор с видеографом подписан.", participants:["Белкина Е.","Першин И."], type:"deadline"},
-    {date:"2026-05-15", title:"ПРОМЕЖУТОЧНЫЙ ДОКЛАД РАЙЧУК Ю.", desc:"Статус проекта: явка, бюджет, готовность. Мерч, жилетки, визитки заказаны. Автобус, зал, кейтеринг подтверждены.", participants:["Голуб В.","Райчук Ю."], type:"report"},
-    {date:"2026-05-17", title:"Контрольный прозвон", desc:"Менеджеры КА обзванивают подтверждённых участников.", participants:["Менеджеры КА","Веприцкий А."], type:"deadline"},
-    {date:"2026-05-18", title:"Финальный список участников", desc:"Веприцкий А. передаёт список с ФИО и телефонами.", participants:["Веприцкий А."], type:"deadline"},
-    {date:"2026-05-19", title:"День тишины — финальная подготовка", desc:"Перемещение образцов. Проверка гарнитур. Установка трансляции. Инструктаж по ТБ.", participants:["Першин И.","Лапа О.","Зинков А."], type:"deadline"},
+    {date:"2026-05-11", title:"Заказ инструмента + расходников", desc:"Белкина Е. оформляет заказ.", participants:["Белкина Е."], type:"deadline"},
+    {date:"2026-05-12", title:"Сценарий дня + Заказ образцов", desc:"Голуб В. утверждает поминутный сценарий.", participants:["Голуб В.","Белкина Е."], type:"deadline"},
+    {date:"2026-05-13", title:"Программа, маршрут, практикум", desc:"Утверждение трёх документов.", participants:["Голуб В.","Лапа О.","Веприцкий А."], type:"deadline"},
+    {date:"2026-05-14", title:"Призы закуплены + Стенды готовы", desc:"Toua и малые призы на руках.", participants:["Белкина Е.","Першин И."], type:"deadline"},
+    {date:"2026-05-15", title:"ПРОМЕЖУТОЧНЫЙ ДОКЛАД РАЙЧУК Ю.", desc:"Статус проекта: явка, бюджет, готовность.", participants:["Голуб В.","Райчук Ю."], type:"report"},
+    {date:"2026-05-17", title:"Контрольный прозвон", desc:"Менеджеры КА обзванивают участников.", participants:["Менеджеры КА","Веприцкий А."], type:"deadline"},
+    {date:"2026-05-18", title:"Финальный список участников", desc:"Веприцкий А. передаёт список.", participants:["Веприцкий А."], type:"deadline"},
+    {date:"2026-05-19", title:"День тишины — финальная подготовка", desc:"Перемещение образцов. Проверка гарнитур.", participants:["Першин И.","Лапа О.","Зинков А."], type:"deadline"},
     {date:"2026-05-20", title:"ДЕНЬ МОНТАЖНИКА", desc:"09:45 – 17:00. Полный сценарий дня.", participants:["ВСЕ"], type:"event"},
     {date:"2026-05-22", title:"Контент для VK", desc:"Лапа О. отбирает и обрабатывает фото/видео.", participants:["Лапа О.","Белкина Е."], type:"deadline"},
-    {date:"2026-05-25", title:"ФИНАЛЬНЫЙ ОТЧЁТ РАЙЧУК Ю.", desc:"Сводный отчёт: KPI, бюджет, обратная связь.", participants:["Голуб В.","Райчук Ю."], type:"report"},
+    {date:"2026-05-25", title:"ФИНАЛЬНЫЙ ОТЧЁТ РАЙЧУК Ю.", desc:"Сводный отчёт: KPI, бюджет, обратная связь.", participants:["Голуб В.","Райчук Ю."], type:"report"}
 ];
 
 const escalations = [
-    {trigger:"Явка < 15 чел. к 10.05", action:"Эскалация к Райчук Ю. Экстренный таргет VK.", deadline:"2026-05-10"},
-    {trigger:"Явка < 20 чел. к 13.05", action:"Эскалация к Райчук Ю. Обзвон силами ЗЭТА.", deadline:"2026-05-13"},
-    {trigger:"Toua не закуплен к 14.05", action:"Замена приза. Согласование с Райчук Ю.", deadline:"2026-05-14"},
+    {trigger:"Явка < 15 чел. к 10.05", action:"Эскалация к Райчук. Экстренный таргет VK.", deadline:"2026-05-10"},
+    {trigger:"Явка < 20 чел. к 13.05", action:"Эскалация к Райчук. Обзвон силами ЗЭТА.", deadline:"2026-05-13"},
+    {trigger:"Toua не закуплен к 14.05", action:"Замена приза. Согласование с Райчук.", deadline:"2026-05-14"},
     {trigger:"Стенды не готовы к 16.05", action:"Эскалация к Чурсину. Ручная сборка.", deadline:"2026-05-16"},
     {trigger:"Автобус не подтверждён к 15.05", action:"Срочный поиск альтернативы (Кузнецова).", deadline:"2026-05-15"},
-    {trigger:"Гарнитуры не работают (19.05)", action:"Отказ от онлайн-трансляции. Замена на рассказ Гостева.", deadline:"2026-05-19"},
-    {trigger:"Травма участника на производстве", action:"Немедленная эскалация к Райчук Ю. и Гостеву. Стоп-мероприятие.", deadline:"2026-05-20"},
+    {trigger:"Гарнитуры не работают (19.05)", action:"Отказ от онлайн-трансляции.", deadline:"2026-05-19"},
+    {trigger:"Травма участника на производстве", action:"Немедленная эскалация к Райчук. Стоп-мероприятие.", deadline:"2026-05-20"}
 ];
 
 const rpChecklistData = [
     {section: "ЕЖЕДНЕВНО (каждый рабочий день, утро)", items: ["Проверить сводку от Веприцкого за вчера", "Проверить мониторинг рассылки от Лапы", "Провести ежедневный стендап в 09:00 МСК (15 мин)", "Ответить на все вопросы в чате Yougile", "Актуализировать done-задачи в матрице"]},
     {section: "ЕЖЕДНЕВНО (каждый рабочий день, вечер)", items: ["Получить сводку от Веприцкого до 16:00", "Запросить статус у Белкиной (заказы, призы, мерч)", "Запросить статус у Першина (стенды, образцы)", "Сверить план-факт по контрольным точкам"]},
-    {section: "04 МАЯ — СТАРТ", items: ["Проверить, что Белкина запустила пост-анонс в VK", "Направить Веприцкому сообщение о старте прозвона", "Создать чат в Yougile: вы, Лапа, Слободянюк, Веприцкий"]},
+    {section: "04 МАЯ — СТАРТ", items: ["Проверить, что Белкина запустила пост-анонс в VK", "Направить Веприцкому сообщение о старте прозвона", "Создать чат в Yougile"]},
     {section: "07 МАЯ — ПРОВЕРКА ЦЕХА", items: ["Лично выехать в цех с Гостевым С.", "Проверить: чистота, маршрут, безопасность", "Подтвердить у Першина: перечень инструмента готов"]},
     {section: "08 МАЯ — ФИЧИ + ГАРНИТУРЫ", items: ["Собрать фичи для теории. Верифицировать с Чурсиным", "Подтвердить у Лапы: гарнитуры проверены", "Подтвердить у Першина: перечень образцов СПК готов"]},
-    {section: "10 МАЯ — КОНТРОЛЬНАЯ ТОЧКА ПО ЯВКЕ", items: ["Запросить у Веприцкого: сколько подтверждённых", "Если < 15 — эскалация к Райчук Ю.", "Если ≥ 15 — продолжаем в штатном режиме"]},
+    {section: "10 МАЯ — КОНТРОЛЬНАЯ ТОЧКА ПО ЯВКЕ", items: ["Запросить у Веприцкого: сколько подтверждённых", "Если < 15 — эскалация к Райчук", "Если ≥ 15 — продолжаем в штатном режиме"]},
     {section: "12 МАЯ — СЦЕНАРИЙ ДНЯ", items: ["Утвердить поминутный сценарий дня", "Подтвердить у Белкиной: заказ образцов СПК оформлен"]},
-    {section: "13 МАЯ — УТВЕРЖДЕНИЕ ПРОГРАММЫ", items: ["Утвердить: программа, маршрут экскурсии, практикум", "Подтвердить у Лапы: уведомление отправлено", "Проверить явку: если < 20 — эскалация к Райчук Ю"]},
+    {section: "13 МАЯ — УТВЕРЖДЕНИЕ ПРОГРАММЫ", items: ["Утвердить: программа, маршрут экскурсии, практикум", "Подтвердить у Лапы: уведомление отправлено", "Проверить явку: если < 20 — эскалация к Райчук"]},
     {section: "14 МАЯ — ПРИЗЫ И СТЕНДЫ", items: ["Лично проверить: Toua и малые призы на руках", "Подтвердить у Першина: 4 стенда изготовлены", "Подтвердить у Белкиной: договор с видеографом подписан"]},
-    {section: "15 МАЯ — ДОКЛАД РАЙЧУК Ю.", items: ["Подготовить краткую презентацию", "Провести встречу с Райчук Ю.", "Подтвердить: мерч, жилетки, визитки заказаны", "Подтвердить: автобус, зал, кейтеринг (Кузнецова)"]},
+    {section: "15 МАЯ — ДОКЛАД РАЙЧУК", items: ["Подготовить краткую презентацию", "Провести встречу с Райчук Ю.", "Подтвердить: мерч, жилетки, визитки заказаны", "Подтвердить: автобус, зал, кейтеринг (Кузнецова)"]},
     {section: "17 МАЯ — КОНТРОЛЬНЫЙ ПРОЗВОН", items: ["Подтвердить у Веприцкого: контрольный прозвон проведён", "Получить предварительный список участников"]},
     {section: "18 МАЯ — ФИНАЛЬНЫЙ СПИСОК", items: ["Получить от Веприцкого финальный список", "Передать список Кузнецовой для регистрации", "Передать список Гостеву для журнала ТБ"]},
     {section: "19 МАЯ — ДЕНЬ ТИШИНЫ", items: ["Финальный обход площадки", "Проверить готовность стендов", "Проверить гарнитуры и трансляцию", "Подтвердить автобус и кейтеринг", "Провести финальную планерку со ВСЕМИ"]},
@@ -339,13 +330,13 @@ const dailySyncs = [];
 for (let d = new Date('2026-05-05T00:00:00'); d <= new Date('2026-05-20T00:00:00'); d = new Date(d.getTime() + MS_DAY)) {
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6 && d.toISOString().split('T')[0] !== '2026-05-09') {
-        dailySyncs.push({ date: d.toISOString().split('T')[0], time: "09:00 МСК", title: "Ежедневный стендап", desc: "15 минут. Статус по задачам, блокеры.", participants: ["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], channel: "Yougile / Звонок" });
+        dailySyncs.push({ date: d.toISOString().split('T')[0], time: "09:00 МСК", title: "Ежедневный стендап", desc: "15 минут.", participants: ["Голуб В.","Кузнецова С.","Белкина Е.","Веприцкий А.","Першин И.","Асканаков В."], channel: "Yougile / Звонок" });
     }
 }
 const weeklySyncs = [
     {date:"2026-05-06", time:"09:00 МСК", title:"Расширенная планерка", desc:"Обсуждение сценария, фич, готовности цеха.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Асканаков В."], channel:"Yougile"},
-    {date:"2026-05-13", time:"09:00 МСК", title:"Расширенная планерка", desc:"Утверждение сценария, программы. Статус набора.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Веприцкий А."], channel:"Yougile"},
-    {date:"2026-05-19", time:"09:00 МСК", title:"Финальная планерка", desc:"Последняя сверка перед мероприятием.", participants:["ВСЕ"], channel:"Yougile / Очно"}
+    {date:"2026-05-13", time:"09:00 МСК", title:"Расширенная планерка", desc:"Утверждение сценария, программы.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Веприцкий А."], channel:"Yougile"},
+    {date:"2026-05-19", time:"09:00 МСК", title:"Финальная планерка", desc:"Последняя сверка.", participants:["ВСЕ"], channel:"Yougile / Очно"}
 ];
 
 // ============================================================================
@@ -365,7 +356,6 @@ let currentStatusFilter = 'all';
 function parseDeadline(dl) { if (!dl || dl.startsWith('Ежедневно') || dl.startsWith('По мере')) return null; const d = new Date(dl + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; }
 function daysUntil(dl) { const d = parseDeadline(dl); return d ? Math.ceil((d - today) / MS_DAY) : Infinity; }
 
-// ИСПРАВЛЕНО: проверяем статус через safeId
 function getStatus(t) {
     if (doneTasksCloud[safeId(t.id)]) return 'done';
     const days = daysUntil(t.deadline);
@@ -407,10 +397,7 @@ function renderTable(filtered) {
         const st = getStatus(t);
         let rowClass = st === 'danger' ? 'row-danger' : st === 'warning' ? 'row-warning' : st === 'done' ? 'row-done' : '';
         let stTag = st === 'danger' ? '<span class="tag tag-red">Просрочено</span>' : st === 'warning' ? '<span class="tag tag-yellow">Срочно</span>' : st === 'done' ? '<span class="tag tag-green">Выполнено</span>' : st === 'today' ? '<span class="tag tag-yellow">Сегодня</span>' : '<span class="tag tag-blue">Ок</span>';
-        
-        // ИСПРАВЛЕНО: проверяем состояние чекбокса через safeId
         const isChecked = doneTasksCloud[safeId(t.id)] ? 'checked' : '';
-        
         return `<tr class="${rowClass}"><td>${t.id}</td><td class="task-name">${t.task}</td><td>${t.R?`<span class="tag tag-blue">${t.R}</span>`:'—'}</td><td>${t.A?`<span class="tag tag-purple">${t.A}</span>`:'—'}</td><td>${t.C||'—'}</td><td>${t.I||'—'}</td><td><strong>${t.deadline}</strong></td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${isChecked} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
     }).join('');
     updateStats(filtered);
@@ -524,18 +511,28 @@ function renderRP() {
     document.getElementById('rpChecklist').innerHTML = rpChecklistData.map((section, si) => {
         return `<div class="checklist-section"><h3>${section.section}</h3>${section.items.map((item, ii) => {
             const key = si + '-' + ii; 
-            const checked = !!doneRPCloud[safeId(key)]; // ИСПРАВЛЕНО
+            const checked = !!doneRPCloud[safeId(key)];
             return `<div class="checklist-item ${checked ? 'done' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="window._rpToggleCloud('${key}')"><label>${item}</label></div>`;
         }).join('')}</div>`;
     }).join('');
 }
 
+// ИСПРАВЛЕННАЯ АРХИТЕКТУРА ПЕРЕКЛЮЧЕНИЯ (С ЗАЩИТОЙ ОТ РЕГИСТРА)
 function setConsoleView(view) {
-    ['cal','sync','esc','rp'].forEach((v, i) => {
-        document.getElementById(['viewCal','viewSync','viewEsc','viewRP'][i]).classList.toggle('hidden', v !== view);
-        document.getElementById(['btnCal','btnSync','btnEsc','btnRP'][i]).classList.remove('active');
+    const views = ['cal', 'sync', 'esc', 'rp'];
+    const viewIds = ['viewCal', 'viewSync', 'viewEsc', 'viewRP'];
+    const btnIds = ['btnCal', 'btnSync', 'btnEsc', 'btnRP'];
+
+    views.forEach((v, i) => {
+        document.getElementById(viewIds[i]).classList.toggle('hidden', v !== view);
+        const btn = document.getElementById(btnIds[i]);
+        if (v === view) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     });
-    document.getElementById('btn' + view.charAt(0).toUpperCase() + view.slice(1)).classList.add('active');
+
     if (view === 'rp') renderRP();
 }
 
