@@ -7,7 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* ═══════════ БАЗОВЫЕ СТИЛИ (ОБЩИЕ) ═══════════ */
+        /* ═══════════ БАЗОВЫЕ СТИЛИ ═══════════ */
         :root {
             --bg: #f2f3f5; --card: #ffffff; --text: #1a1a1a; --text-secondary: #666;
             --border: #e0e0e0; --accent: #0066cc; --danger: #cc0000; --warning: #e68a00;
@@ -183,7 +183,7 @@
 
 <script>
 // ============================================================================
-// 1. ИНИЦИАЛИЗАЦИЯ FIREBASE (Твои ключи + добавленный мной databaseURL)
+// 1. ИНИЦИАЛИЗАЦИЯ FIREBASE 
 // ============================================================================
 const firebaseConfig = {
     apiKey: "AIzaSyAl4KpPXXHCAwY78NjzjVfQ6PNDs6k8fvc",
@@ -194,11 +194,15 @@ const firebaseConfig = {
     messagingSenderId: "896467653666",
     appId: "1:896467653666:web:14e5acaefe90348ce9e67b"
 };
+
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
 let doneTasksCloud = {};
 let doneRPCloud = {};
+
+// === ИНЖЕНЕРНОЕ ИСПРАВЛЕНИЕ: ЭКРАНИРОВАНИЕ ТОЧЕК В ID ===
+function safeId(id) { return id.replace(/\./g, '_'); } // "1.1" -> "1_1"
 
 // Слушатель базы: Задачи
 database.ref('matrixDone').on('value', (snapshot) => {
@@ -216,18 +220,21 @@ database.ref('rpChecklist').on('value', (snapshot) => {
     }
 });
 
-// Отправка в облако
+// Отправка в облако (ИСПРАВЛЕНО: используем safeId)
 function toggleTaskCloud(id) {
-    const isDone = !!doneTasksCloud[id];
-    database.ref('matrixDone/' + id).set(isDone ? null : true);
+    const sId = safeId(id);
+    const isDone = !!doneTasksCloud[sId];
+    database.ref('matrixDone/' + sId).set(isDone ? null : true);
 }
 window._rpToggleCloud = function(key) {
-    const isDone = !!doneRPCloud[key];
-    database.ref('rpChecklist/' + key).set(isDone ? null : true);
+    // В чек-листе ключи типа "0-1", точек нет, но для безопасности:
+    const sKey = safeId(key);
+    const isDone = !!doneRPCloud[sKey];
+    database.ref('rpChecklist/' + sKey).set(isDone ? null : true);
 };
 
 // ============================================================================
-// 2. ПОЛНЫЕ МАССИВЫ ДАННЫХ (ВСЕ 53 ЗАДАЧИ, ВЕХИ, ПЛАНЕРКИ И ЭСКАЛАЦИИ)
+// 2. ПОЛНЫЕ МАССИВЫ ДАННЫХ
 // ============================================================================
 const tasks = [
     {id:"1.1", task:"Поминутный сценарий дня", R:"Голуб В.", A:"Голуб В.", C:"", I:"Все", deadline:"2026-05-12", block:"1. Методика"},
@@ -326,7 +333,6 @@ const rpChecklistData = [
     {section: "25 МАЯ — ФИНАЛЬНЫЙ ОТЧЁТ", items: ["Подготовить сводный отчёт (KPI, бюджет)", "Направить отчёт Райчуку Ю.", "Закрыть проект"]}
 ];
 
-// Генерация графика планерок (восстановление логики из оригинального файла)
 const MS_DAY = 86400000;
 const today = new Date('2026-05-04T00:00:00');
 const dailySyncs = [];
@@ -341,7 +347,6 @@ const weeklySyncs = [
     {date:"2026-05-13", time:"09:00 МСК", title:"Расширенная планерка", desc:"Утверждение сценария, программы. Статус набора.", participants:["Голуб В.","Чурсин Ю.","Гостев С.","Лапа О.","Логинова И.","Веприцкий А."], channel:"Yougile"},
     {date:"2026-05-19", time:"09:00 МСК", title:"Финальная планерка", desc:"Последняя сверка перед мероприятием.", participants:["ВСЕ"], channel:"Yougile / Очно"}
 ];
-
 
 // ============================================================================
 // 3. ФУНКЦИОНАЛ ПРИЛОЖЕНИЙ
@@ -359,8 +364,10 @@ let currentStatusFilter = 'all';
 
 function parseDeadline(dl) { if (!dl || dl.startsWith('Ежедневно') || dl.startsWith('По мере')) return null; const d = new Date(dl + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; }
 function daysUntil(dl) { const d = parseDeadline(dl); return d ? Math.ceil((d - today) / MS_DAY) : Infinity; }
+
+// ИСПРАВЛЕНО: проверяем статус через safeId
 function getStatus(t) {
-    if (doneTasksCloud[t.id]) return 'done';
+    if (doneTasksCloud[safeId(t.id)]) return 'done';
     const days = daysUntil(t.deadline);
     if (days === Infinity) return 'ok';
     if (days < 0) return 'danger';
@@ -382,7 +389,7 @@ function getFilteredTasks() {
     if (currentStatusFilter === 'urgent') result = result.filter(t => getStatus(t) === 'warning');
     if (currentStatusFilter === 'overdue') result = result.filter(t => getStatus(t) === 'danger');
     if (currentStatusFilter === 'today') result = result.filter(t => getStatus(t) === 'today' || getStatus(t) === 'warning');
-    if (currentStatusFilter === 'done') result = result.filter(t => doneTasksCloud[t.id]);
+    if (currentStatusFilter === 'done') result = result.filter(t => doneTasksCloud[safeId(t.id)]);
 
     result.sort((a,b) => {
         const da = daysUntil(a.deadline), db = daysUntil(b.deadline);
@@ -400,7 +407,11 @@ function renderTable(filtered) {
         const st = getStatus(t);
         let rowClass = st === 'danger' ? 'row-danger' : st === 'warning' ? 'row-warning' : st === 'done' ? 'row-done' : '';
         let stTag = st === 'danger' ? '<span class="tag tag-red">Просрочено</span>' : st === 'warning' ? '<span class="tag tag-yellow">Срочно</span>' : st === 'done' ? '<span class="tag tag-green">Выполнено</span>' : st === 'today' ? '<span class="tag tag-yellow">Сегодня</span>' : '<span class="tag tag-blue">Ок</span>';
-        return `<tr class="${rowClass}"><td>${t.id}</td><td class="task-name">${t.task}</td><td>${t.R?`<span class="tag tag-blue">${t.R}</span>`:'—'}</td><td>${t.A?`<span class="tag tag-purple">${t.A}</span>`:'—'}</td><td>${t.C||'—'}</td><td>${t.I||'—'}</td><td><strong>${t.deadline}</strong></td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${doneTasksCloud[t.id]?'checked':''} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
+        
+        // ИСПРАВЛЕНО: проверяем состояние чекбокса через safeId
+        const isChecked = doneTasksCloud[safeId(t.id)] ? 'checked' : '';
+        
+        return `<tr class="${rowClass}"><td>${t.id}</td><td class="task-name">${t.task}</td><td>${t.R?`<span class="tag tag-blue">${t.R}</span>`:'—'}</td><td>${t.A?`<span class="tag tag-purple">${t.A}</span>`:'—'}</td><td>${t.C||'—'}</td><td>${t.I||'—'}</td><td><strong>${t.deadline}</strong></td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${isChecked} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
     }).join('');
     updateStats(filtered);
 }
@@ -417,7 +428,7 @@ function renderCalendar(filtered) {
         let hc = isPast ? 'overdue' : isToday ? 'today' : isWkd ? 'weekend' : '';
         let html = `<div class="cal-day"><div class="cal-day-header ${hc}">${d.toLocaleDateString('ru-RU',{weekday:'short'})}, ${d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</div>`;
         if (!items.length) html += '<div class="cal-empty">—</div>';
-        else items.forEach(t => html += `<div class="cal-item ${doneTasksCloud[t.id]?'done':''}" title="${t.task}"><span class="cal-who">${t.R||t.A}</span><br>${t.task.substring(0,50)}</div>`);
+        else items.forEach(t => html += `<div class="cal-item ${doneTasksCloud[safeId(t.id)]?'done':''}" title="${t.task}"><span class="cal-who">${t.R||t.A}</span><br>${t.task.substring(0,50)}</div>`);
         return html + '</div>';
     }).join('');
     updateStats(filtered);
@@ -431,7 +442,8 @@ function renderCP(filtered) {
         const st = getStatus(t); 
         let stTag = st==='danger'?'<span class="tag tag-red">Просрочено</span>':st==='warning'?'<span class="tag tag-yellow">Срочно</span>':st==='done'?'<span class="tag tag-green">Выполнено</span>':st==='today'?'<span class="tag tag-yellow">Сегодня</span>':'<span class="tag tag-blue">Ок</span>';
         let rowClass = st==='danger'?'row-danger':st==='warning'?'row-warning':st==='done'?'row-done':'';
-        return `<tr class="${rowClass}"><td><strong>${t.deadline}</strong></td><td class="task-name">${t.task}</td><td>${t.A||t.R}</td><td>${t.task}</td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${doneTasksCloud[t.id]?'checked':''} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
+        const isChecked = doneTasksCloud[safeId(t.id)] ? 'checked' : '';
+        return `<tr class="${rowClass}"><td><strong>${t.deadline}</strong></td><td class="task-name">${t.task}</td><td>${t.A||t.R}</td><td>${t.task}</td><td>${stTag}</td><td><input type="checkbox" class="done-checkbox" ${isChecked} onchange="toggleTaskCloud('${t.id}')"></td></tr>`;
     }).join('')}</tbody></table>`;
     updateStats(filtered);
 }
@@ -511,7 +523,8 @@ function renderEscalations() {
 function renderRP() {
     document.getElementById('rpChecklist').innerHTML = rpChecklistData.map((section, si) => {
         return `<div class="checklist-section"><h3>${section.section}</h3>${section.items.map((item, ii) => {
-            const key = si + '-' + ii; const checked = !!doneRPCloud[key]; // Данные из облака
+            const key = si + '-' + ii; 
+            const checked = !!doneRPCloud[safeId(key)]; // ИСПРАВЛЕНО
             return `<div class="checklist-item ${checked ? 'done' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="window._rpToggleCloud('${key}')"><label>${item}</label></div>`;
         }).join('')}</div>`;
     }).join('');
@@ -533,13 +546,6 @@ renderConsoleCalendar();
 renderSyncGrid();
 renderEscalations();
 
-// Подстраховка на случай, если Firebase заблокирован корпоративным файрволом
-setTimeout(() => {
-    const status = document.getElementById('cloudStatus');
-    if (status.classList.contains('offline')) {
-        document.getElementById('cloudText').innerText = "Ошибка БД: Проверьте сеть или URL";
-    }
-}, 3000);
 </script>
 </body>
 </html>
