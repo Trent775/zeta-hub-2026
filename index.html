@@ -325,7 +325,9 @@ const rpChecklistData = [
 ];
 
 const MS_DAY = 86400000;
-const today = new Date('2026-05-04T00:00:00');
+// Берем реальное время с устройства и обнуляем часы/минуты, чтобы считать только чистые сутки
+const today = new Date(); 
+today.setHours(0,0,0,0);
 const dailySyncs = [];
 for (let d = new Date('2026-05-05T00:00:00'); d <= new Date('2026-05-20T00:00:00'); d = new Date(d.getTime() + MS_DAY)) {
     const dow = d.getDay();
